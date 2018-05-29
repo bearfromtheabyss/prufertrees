@@ -6,7 +6,7 @@ var divWidth = (viewportw - leftPanelWidth) - 25;
 document.getElementById('graphDiv').setAttribute("style", "height: " + (viewporth - 1) + "px;width:" + divWidth + "px;");
 /*Graph*/
 var graph = Viva.Graph.graph();
-var count = 1;
+var count = 0;
 var first, second;
 var nodeID = 0;
 var linksIds = [];
@@ -17,19 +17,59 @@ var addNewNode = function () {
     graph.forEachNode(function (node) {
         noNodes++;
     });
-    if (noNodes == 0) {
-        count = 1;
-    }
-    else { count++; }
+    count++;
     graph.addNode(count);
-    noNodes = 0;
 }
-var getPruferLabel = function(minimal){
-    if (typeof minimal != "undefined") { 
-        if(minimal.id != minimal.links[0].toId){
-            pruferLabel = minimal.links[0].toId;
+var findMinNotInSeq = function (seq, list) {
+    var min = 0;
+    var notinlist = [];
+    notinlist = list.filter(e=>!seq.includes(e));
+    min = Math.min(...notinlist);
+    return min;
+}
+var generateTreeFromPrufer = function () {
+    var sequence = prompt("Please provide prufer sequence: ");
+    var seqArray = sequence.split(",");
+    var list = [];
+    var tree = [];
+    var found = false;
+    //clear area
+    graph.forEachNode(function (node) {
+        graph.removeNode(node.id);
+    });
+    //generate labels array
+    for (var i = 1; i <= seqArray.length + 2; i++) {
+        list.push(i.toString());
+    }
+    for(var i = 0; i<list.length; i++){
+        var min = findMinNotInSeq(seqArray, list);
+        list = list.filter(function(e){
+            return e!=min;
+        });
+        var node = seqArray.shift();
+        graph.addLink(min, node);
+    }
+    //nodes left
+    for(var i = 0; i < list.length; i++){
+        var min = findMinNotInSeq(seqArray, list);
+        if(seqArray.length == 0 && list.length > 0){
+            graph.addLink(list[0], list[1]);
+            break;
         }
         else{
+            graph.addLink(seqArray.shift(), min);
+            list = list.filter(function(e){
+                return e!=min;
+            });
+        }
+    }
+}
+var getPruferLabel = function (minimal) {
+    if (typeof minimal != "undefined") {
+        if (minimal.id != minimal.links[0].toId) {
+            pruferLabel = minimal.links[0].toId;
+        }
+        else {
             pruferLabel = minimal.links[0].fromId;
         }
     }
@@ -65,17 +105,17 @@ var getPruferCode = function () {
             });
             //delete link with minimal
             //delete node
-            if (typeof minimal != "undefined") { 
+            if (typeof minimal != "undefined") {
                 pruferLabel = getPruferLabel(minimal);
                 pruferCode.push(pruferLabel);
                 nodes = nodes.filter(function (node) {
                     return node.id != minimal.id;
                 });
             }
-            else{
+            else {
                 break;
             }
-            
+
         }
         alert("Prufer code for this tree is: " + pruferCode.join(" , "));
     }
@@ -93,7 +133,7 @@ graphics.node(
                 .attr('x', nodeSize / 4 + "px")
                 .attr('height', nodeSize + 10)
                 .attr('width', nodeSize + 10)
-                .text(count),
+                .text(node.id),
             nodeLayout = Viva.Graph.svg('rect').attr('width', nodeSize).attr('height', nodeSize).attr('fill', color);
         $(ui).hover(function () {
             nodeLayout.attr('fill', 'deepskyblue');
@@ -135,8 +175,8 @@ graphics.link(function (link) {
 })
 
 var layout = Viva.Graph.Layout.forceDirected(graph, {
-    springLength: 30,
-    springCoeff: 0.0008,
+    springLength: 50,
+    springCoeff: 0.005,
     dragCoeff: 0.02,
     gravity: -0.5
 });
